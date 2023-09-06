@@ -119,7 +119,7 @@ class GemsAPI extends PluginBase implements Listener
             $this->getLogger()->warning("Gems amount cannot be negative!");
             return;
         }
-        $playerData = new Config($this->getDataFolder() . "Data/" . $player . ".yml", Config::YAML);
+        $playerData = new Config($this->getDataFolder() . "Data/" . $playerName . ".yml", Config::YAML);
         $playerData->set("Gems", $amount);
         $playerData->save();
     }
