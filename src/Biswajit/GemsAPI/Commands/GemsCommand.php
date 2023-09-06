@@ -21,7 +21,7 @@ class GemsCommand extends Command
     {
         if ($sender->hasPermission("GemsAPI.cmd.use")) {
             if (!isset($args[0])) {
-                $sender->sendMessage("§e/Gems <help/pay> <player> <amount>");
+                $sender->sendMessage("§e/Gems <help/pay/bal> <player> <amount>");
                 return false;
             } 
             
