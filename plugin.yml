@@ -1,0 +1,16 @@
+---
+name: GemsAPI
+author: Biswajit
+main: Biswajit\GemsAPI\GemsAPI
+version: 1.0.0
+api: 5.0.0
+
+permissions:
+ GemsAPI.cmd.use:
+  default: true
+ GemsAPI.add.cmd:
+  default: op
+ GemsAPI.remove.cmd:
+  default: op
+ GemsAPI.Set.cmd:
+  default: op
