@@ -55,7 +55,7 @@ class GemsCommand extends Command
                         $sender->sendMessage("§e/Gems <bal> <player>");
                         return false;
                     }
-                    $sender->sendMessage('§7The Player §e' . $args[1] . '§7 Have : §e$' . WenCore::getInstance()->getGemsBalance($args[1]) . "§7 Gems");
+                    $sender->sendMessage('§7The Player §e' . $args[1] . '§7 Have : §e$' . GemsAPI::getInstance()->getGemsBalance($args[1]) . "§7 Gems");
                     break;
                 default:
                     $sender->sendMessage("§e/Gems <pay/help> <player> <amount>");
