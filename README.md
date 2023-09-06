@@ -49,7 +49,7 @@ GemsAPI::getInstance()->getTopPlayerWithGems();
 
 ```php
 use Biswajit\GemsAPI\GemsAPI;
-GemsAPI::getInstance()->setGems($player->getName(),, (float) $amount);
+GemsAPI::getInstance()->setGems($player->getName(), (float) $amount);
 ```
 
 ## Get all gems 
