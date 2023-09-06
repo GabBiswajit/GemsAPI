@@ -4,6 +4,8 @@ author: Biswajit
 main: Biswajit\GemsAPI\GemsAPI
 version: 1.0.0
 api: 5.0.0
+softdepend: 
+- ScoreHud
 
 permissions:
  GemsAPI.cmd.use:
