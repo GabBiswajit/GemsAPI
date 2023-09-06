@@ -9,6 +9,8 @@ A Gems Economy Plugin For Pocketmine 5.0.0...
 | topgems | View the top player | `/topgems` | `GemsAPI.cmd.use` |
 | addgems | Add gems to others balance | `/addgems <player: string> <amount: number>`  | `GemsAPI.add.cmd` |
 | removegems | Remove gems from others balance | `/removegems <player: string> <amount: number>`  | `GemsAPI.remove.cmd` |
+| setgems | setgems gems from others balance | `/setgems <player: string> <amount: number>`  | `GemsAPI.set.cmd` |
+
 
 ## tag
 - ScoreHud Tag `gems.bal`
@@ -36,9 +38,23 @@ use Biswajit\GemsAPI\GemsAPI;
 GemsAPI::getInstance()->takeGemsBalance($player->getName(), (float) $amount);
 ```
 
-## top gems 
+## Top gems 
 
 ```php
 use Biswajit\GemsAPI\GemsAPI;
 GemsAPI::getInstance()->getTopPlayerWithGems();
+```
+
+## Set gems for players
+
+```php
+use Biswajit\GemsAPI\GemsAPI;
+GemsAPI::getInstance()->setGems($player->getName(),, (float) $amount);
+```
+
+## Get all gems 
+
+```php
+use Biswajit\GemsAPI\GemsAPI;
+GemsAPI::getInstance()->getallgems();
 ```
