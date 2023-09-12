@@ -20,146 +20,188 @@ class GemsAPI extends PluginBase implements Listener
 {
     public array $gemsMoney = [];
 
+    public \SQLite3 $database;
+
     private static GemsAPI $instance;
 
     public function onLoad(): void
     {
         self::$instance = $this;
-        $this->getLogger()->info("§eLoading GemsAPI...");
+  
     }
 
     public function onEnable(): void
     {
-        if (!file_exists($this->getDataFolder() . "Data")) {
-            @mkdir($this->getDataFolder() . "Data");
-            $this->getLogger()->info("§bRegistered Data Folder Successfully!");
-        }
-        $this->checkScoreHud();
+        $this->database = new \SQLite3($this->getDataFolder() . "playerdata.db");
+
+        $query = "CREATE TABLE IF NOT EXISTS player_data (player_name TEXT PRIMARY KEY, gems FLOAT)";
+        $this->database->exec($query);
+
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
 
         CommandHandler::initialize();
 
         $this->getServer()->getPluginManager()->registerEvents(new EventListener(), $this);
     }
-    
-    private function checkScoreHud(): void {
-        $pluginManager = $this->getServer()->getPluginManager();
-        if ($pluginManager->getPlugin("ScoreHud") !== null) {
-            $pluginManager->registerEvents(new ScoreHudTagListener(), $this);
-        } else {
-            return;
-        }
-    }
 
     public static function getInstance(): GemsAPI
     {
         return self::$instance;
-
     }
 
     public function saveAllData(): void
     {
-        foreach ($this->gemsMoney as $player => $amount) {
-            $gems = new Config($this->getDataFolder() . "Data/" . $player . ".yml", Config::YAML);
-            $gems->set("Gems", $amount);
-            $gems->save();
+        foreach ($this->gemsMoney as $playerName => $amount) {
+            $stmt = $this->database->prepare("UPDATE player_data SET gems = :gems WHERE player_name = :name");
+            $stmt->bindValue(":name", $playerName, SQLITE3_TEXT);
+            $stmt->bindValue(":gems", $amount, SQLITE3_FLOAT);
+            $stmt->execute();
         }
     }
-
 
     public function loadData(Player $player): void
     {
-        $gems = new Config($this->getDataFolder() . "Data/" . $player->getName() . ".yml", Config::YAML);
-        $this->gemsMoney[$player->getName()] = $gems->get("Gems");
-    }
+        $playerName = $player->getName();
+        $stmt = $this->database->prepare("SELECT gems FROM player_data WHERE player_name = :name");
+        $stmt->bindValue(":name", $playerName, SQLITE3_TEXT);
+        $result = $stmt->execute();
 
+        $row = $result->fetchArray(SQLITE3_ASSOC);
+
+        if ($row !== false) {
+            $this->gemsMoney[$playerName] = (float)$row['gems'];
+        } else {
+            $this->gemsMoney[$playerName] = 0.0;
+        }
+    }
 
     public function saveData(Player $player): void
     {
-        if (isset($this->gemsMoney[$player->getName()])) {
-            $gems = new Config($this->getDataFolder() . "Data/" . $player->getName() . ".yml", Config::YAML);
-            $gems->set("Gems", $this->gemsMoney[$player->getName()]);
-            $gems->save();
-        }
+        $playerName = $player->getName();
+        
+        $stmt = $this->database->prepare("UPDATE player_data SET gems = :gems WHERE player_name = :name");
+        $stmt->bindValue(":name", $playerName, SQLITE3_TEXT);
+        $stmt->bindValue(":gems", $this->gemsMoney[$playerName], SQLITE3_FLOAT);
+        $stmt->execute();
     }
 
-    public function giveGemsBalance(string $player, float $amount): void
+    public function giveGemsBalance(string $playerName, float $amount): void
     {
-        $player = $this->getServer()->getPlayerExact($player);
-        $name = $player->getName();
-        if ($player instanceof Player && isset($this->gemsMoney[$name]) && is_numeric($this->gemsMoney[$name])) {
-            $this->gemsMoney[$name] = $this->gemsMoney[$name] + $amount;
-        } else {
-            $gems = new Config($this->getDataFolder() . "Data/" . $name . ".yml", Config::YAML);
-            $gems->set("Gems", $gems->get("Gems") + $amount);
-            $gems->save();
-        }
-        $event = new PlayerGemsBalChangeEvent($player, strval($this->getGemsBalance($player->getName())));
-        $event->call();
-    }
-
-  public function getTopPlayerWithGems(): string {
-    $players = $this->getServer()->getOnlinePlayers();
-    $topPlayer = "";
-    $topGems = 0;
-
-    foreach ($players as $player) {
-        $gems = $this->getGemsBalance($player->getName());
-        if ($gems > $topGems) {
-            $topGems = $gems;
-            $topPlayer = $player->getName();
-        }
-    }
-
-    return $topPlayer;
-}
-
-  public function setGems(string $playerName, float $amount): void {
         if ($amount < 0) {
             $this->getLogger()->warning("Gems amount cannot be negative!");
             return;
         }
-        $playerData = new Config($this->getDataFolder() . "Data/" . $playerName . ".yml", Config::YAML);
-        $playerData->set("Gems", $amount);
-        $playerData->save();
+
+        $stmt = $this->database->prepare("SELECT gems FROM player_data WHERE player_name = :name");
+        $stmt->bindValue(":name", $playerName, SQLITE3_TEXT);
+        $result = $stmt->execute();
+
+        $row = $result->fetchArray(SQLITE3_ASSOC);
+
+        if ($row !== false) {
+            $currentBalance = (float)$row['gems'];
+
+            $newBalance = $currentBalance + $amount;
+
+            $stmt = $this->database->prepare("UPDATE player_data SET gems = :newBalance WHERE player_name = :name");
+            $stmt->bindValue(":name", $playerName, SQLITE3_TEXT);
+            $stmt->bindValue(":newBalance", $newBalance, SQLITE3_FLOAT);
+            $stmt->execute();
+
+            $this->gemsMoney[$playerName] = $newBalance;
+        } else {
+            $this->getLogger()->warning("Player not found in the database.");
+        }
+    }
+
+  public function getTopPlayerWithGems(): string {
+    $stmt = $this->database->query("SELECT player_name, gems FROM player_data ORDER BY gems DESC LIMIT 1");
+
+    $row = $stmt->fetchArray(SQLITE3_ASSOC);
+
+    if ($row !== false) {
+        return $row['player_name'];
+    } else {
+        return "";
+    }
+}
+
+
+  public function setGems(string $playerName, float $amount): void {
+    if ($amount < 0) {
+        $this->getLogger()->warning("Gems amount cannot be negative!");
+        return;
     }
     
+    $stmt = $this->database->prepare("UPDATE player_data SET gems = :gems WHERE player_name = :name");
+    $stmt->bindValue(":name", $playerName, SQLITE3_TEXT);
+    $stmt->bindValue(":gems", $amount, SQLITE3_FLOAT);
+    $stmt->execute();
+    $this->gemsMoney[$playerName] = $amount;
+}
+
+    
   public function getallgems(): array {
-    $players = $this->getServer()->getOnlinePlayers();
     $allGems = [];
 
-    foreach ($players as $player) {
-        $gems = $this->getGemsBalance($player->getName());
-        $allGems[$player->getName()] = $gems;
+    $stmt = $this->database->query("SELECT player_name, gems FROM player_data");
+    
+    while ($row = $stmt->fetchArray(SQLITE3_ASSOC)) {
+        $playerName = $row['player_name'];
+        $gems = (float)$row['gems'];
+        $allGems[$playerName] = $gems;
     }
 
     return $allGems;
-    }
+}
+
     
     public function takeGemsBalance(string $player, float $amount): void
-    {
-        $player = $this->getServer()->getPlayerExact($player);
-        $name = $player->getName();
-        if ($player instanceof Player && isset($this->gemsMoney[$name])) {
-            $this->gemsMoney[$name] = $this->gemsMoney[$name] - $amount;
+{
+    $playerName = $player;
+
+    $stmt = $this->database->prepare("SELECT gems FROM player_data WHERE player_name = :name");
+    $stmt->bindValue(":name", $playerName, SQLITE3_TEXT);
+    $result = $stmt->execute();
+
+    $row = $result->fetchArray(SQLITE3_ASSOC);
+
+    if ($row !== false) {
+        $currentBalance = (float)$row['gems'];
+
+        if ($currentBalance >= $amount) {
+         
+            $newBalance = $currentBalance - $amount;
+
+            $stmt = $this->database->prepare("UPDATE player_data SET gems = :newBalance WHERE player_name = :name");
+            $stmt->bindValue(":name", $playerName, SQLITE3_TEXT);
+            $stmt->bindValue(":newBalance", $newBalance, SQLITE3_FLOAT);
+            $stmt->execute();
+
+            $this->gemsMoney[$playerName] = $newBalance;
         } else {
-            $gems = new Config($this->getDataFolder() . "Data/" . $name . ".yml", Config::YAML);
-            $gems->set("Gems", $gems->get("Gems") - $amount);
-            $gems->save();
+            $this->getLogger()->warning("Insufficient gems balance for deduction.");
         }
-        $event = new PlayerGemsBalChangeEvent($player, strval($this->getGemsBalance($player->getName())));
-        $event->call();
+    } else {
+        $this->getLogger()->warning("Player not found in the database.");
     }
+}
+
 
     public function getGemsBalance(string $player): float
-    {
-        if ($this->getServer()->getPlayerExact($player) instanceof Player && isset($this->gemsMoney[$player])) {
-            return (float) $this->gemsMoney[$player];
-        } else {
-            $gems = new Config($this->getDataFolder() . "Data/" . $player . ".yml", Config::YAML);
-            $money = (float) $gems->get("Gems");
-            $gems->save();
-            return $money;
-        }
+{
+    $playerName = $player;
+
+    $stmt = $this->database->prepare("SELECT gems FROM player_data WHERE player_name = :name");
+    $stmt->bindValue(":name", $playerName, SQLITE3_TEXT);
+    $result = $stmt->execute();
+
+    $row = $result->fetchArray(SQLITE3_ASSOC);
+
+    if ($row !== false) {
+        return (float)$row['gems'];
+    } else {
+        return 0.0;
     }
+ }
 }
